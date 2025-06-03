@@ -13,39 +13,108 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
+            font-family: Arial, sans-serif;
         }
         canvas {
             background: #111;
             border: 2px solid #fff;
         }
         #score {
-            font-size: 1.5em;
+            font-size: 1.2em;
             margin-bottom: 10px;
+        }
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-size: 1.5em;
         }
     </style>
 </head>
 <body>
-    <div id="score">Score : 0</div>
+    <div id="score">Score : 0 | Meilleur : 0</div>
     <canvas id="game" width="400" height="400"></canvas>
+    <div id="overlay">Appuyez sur Entrée pour commencer</div>
     <script>
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('overlay');
         const box = 20;
-        let snake = [{x: 9 * box, y: 10 * box}];
-        let direction = null;
-        let food = {
-            x: Math.floor(Math.random() * 20) * box,
-            y: Math.floor(Math.random() * 20) * box
-        };
-        let score = 0;
-        let gameOver = false;
+        let snake;
+        let direction;
+        let food;
+        let score;
+        let bestScore = parseInt(localStorage.getItem('bestScore') || '0');
+        let game;
+        let speed = 100;
+        let paused = true;
 
-        document.addEventListener('keydown', dir);
-        function dir(e) {
+        document.getElementById('score').innerText = `Score : 0 | Meilleur : ${bestScore}`;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && paused) startGame();
+            if (paused) return;
             if (e.key === 'ArrowLeft' && direction !== 'RIGHT') direction = 'LEFT';
             else if (e.key === 'ArrowUp' && direction !== 'DOWN') direction = 'UP';
             else if (e.key === 'ArrowRight' && direction !== 'LEFT') direction = 'RIGHT';
             else if (e.key === 'ArrowDown' && direction !== 'UP') direction = 'DOWN';
+            else if (e.key.toLowerCase() === 'p') togglePause();
+            else if (e.key.toLowerCase() === 'r') restart();
+        });
+
+        function startGame() {
+            overlay.style.display = 'none';
+            paused = false;
+            snake = [{x: 9 * box, y: 10 * box}];
+            direction = null;
+            food = randomFood();
+            score = 0;
+            speed = 100;
+            updateScore();
+            clearInterval(game);
+            game = setInterval(draw, speed);
+        }
+
+        function restart() {
+            overlay.innerText = 'Appuyez sur Entrée pour recommencer';
+            overlay.style.display = 'flex';
+            paused = true;
+            clearInterval(game);
+        }
+
+        function togglePause() {
+            paused = !paused;
+            if (paused) {
+                overlay.innerText = 'Pause - appuyez sur P pour reprendre';
+                overlay.style.display = 'flex';
+                clearInterval(game);
+            } else {
+                overlay.style.display = 'none';
+                game = setInterval(draw, speed);
+            }
+        }
+
+        function randomFood() {
+            return {
+                x: Math.floor(Math.random() * 20) * box,
+                y: Math.floor(Math.random() * 20) * box
+            };
+        }
+
+        function updateScore() {
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('bestScore', bestScore);
+            }
+            document.getElementById('score').innerText = `Score : ${score} | Meilleur : ${bestScore}`;
         }
 
         function draw() {
@@ -65,39 +134,35 @@
             if (direction) {
                 if (snakeX === food.x && snakeY === food.y) {
                     score++;
-                    document.getElementById('score').innerText = 'Score : ' + score;
-                    food = {
-                        x: Math.floor(Math.random() * 20) * box,
-                        y: Math.floor(Math.random() * 20) * box
-                    };
+                    food = randomFood();
+                    snake.unshift({x: snakeX, y: snakeY});
+                    if (speed > 40) {
+                        speed -= 2;
+                        clearInterval(game);
+                        game = setInterval(draw, speed);
+                    }
+                    updateScore();
                 } else {
                     snake.pop();
+                    snake.unshift({x: snakeX, y: snakeY});
                 }
-                let newHead = {x: snakeX, y: snakeY};
-                // Collision
                 if (
                     snakeX < 0 || snakeX >= 400 ||
                     snakeY < 0 || snakeY >= 400 ||
-                    collision(newHead, snake)
+                    collision({x: snakeX, y: snakeY}, snake.slice(1))
                 ) {
-                    clearInterval(game);
-                    gameOver = true;
-                    document.getElementById('score').innerText += '  |  GAME OVER';
+                    overlay.innerText = 'Game Over - appuyez sur Entrée';
+                    restart();
                 }
-                snake.unshift(newHead);
             }
         }
 
         function collision(head, array) {
-            for (let i = 0; i < array.length; i++) {
-                if (head.x === array[i].x && head.y === array[i].y) {
-                    return true;
-                }
+            for (let part of array) {
+                if (head.x === part.x && head.y === part.y) return true;
             }
             return false;
         }
-
-        let game = setInterval(draw, 100);
     </script>
 </body>
 </html>
