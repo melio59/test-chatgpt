@@ -1,0 +1,20 @@
+name: Switch Game
+
+on:
+  schedule:
+    - cron: '0 */10 * * *'
+  workflow_dispatch:
+
+jobs:
+  toggle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Toggle game
+        run: |
+          bash switch_game.sh
+      - name: Push changes
+        run: |
+          git push origin $GITHUB_REF
