@@ -11,7 +11,3 @@ A GitHub Actions workflow located in `.github/workflows/switch-game.yml`
 runs every ten hours. It executes `switch_game.sh`, which alternates
 `main.html` between `snake.html` and `pacman.html` and commits the change.
 
-Another workflow, `.github/workflows/deploy-pages.yml`, publishes the current
-`main.html` to the `gh-pages` branch as `index.html` whenever changes are
-pushed to `main`. Enable GitHub Pages from that branch to serve the game
-online.
