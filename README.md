@@ -10,3 +10,4 @@ This repository contains simple browser games written in plain HTML/JS.
 A GitHub Actions workflow located in `.github/workflows/switch-game.yml`
 runs every ten hours. It executes `switch_game.sh`, which alternates
 `main.html` between `snake.html` and `pacman.html` and commits the change.
+
