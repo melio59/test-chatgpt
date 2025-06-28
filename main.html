@@ -2,10 +2,10 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Snake.io</title>
+    <title>Pacman.io</title>
     <style>
         body {
-            background: #222;
+            background: #000;
             color: #fff;
             display: flex;
             flex-direction: column;
@@ -16,7 +16,7 @@
             font-family: Arial, sans-serif;
         }
         canvas {
-            background: #111;
+            background: #222;
             border: 2px solid #fff;
         }
         #score {
@@ -40,7 +40,7 @@
     </style>
 </head>
 <body>
-    <div id="score">Score : 0 | Meilleur : 0</div>
+    <div id="score">Score : 0</div>
     <canvas id="game" width="400" height="400"></canvas>
     <div id="overlay">Appuyez sur Entrée pour commencer</div>
     <script>
@@ -48,24 +48,20 @@
         const ctx = canvas.getContext('2d');
         const overlay = document.getElementById('overlay');
         const box = 20;
-        let snake;
+        let pacman;
         let direction;
-        let food;
+        let pellets;
         let score;
-        let bestScore = parseInt(localStorage.getItem('bestScore') || '0');
         let game;
-        let speed = 100;
         let paused = true;
-
-        document.getElementById('score').innerText = `Score : 0 | Meilleur : ${bestScore}`;
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && paused) startGame();
             if (paused) return;
-            if (e.key === 'ArrowLeft' && direction !== 'RIGHT') direction = 'LEFT';
-            else if (e.key === 'ArrowUp' && direction !== 'DOWN') direction = 'UP';
-            else if (e.key === 'ArrowRight' && direction !== 'LEFT') direction = 'RIGHT';
-            else if (e.key === 'ArrowDown' && direction !== 'UP') direction = 'DOWN';
+            if (e.key === 'ArrowLeft') direction = 'LEFT';
+            else if (e.key === 'ArrowUp') direction = 'UP';
+            else if (e.key === 'ArrowRight') direction = 'RIGHT';
+            else if (e.key === 'ArrowDown') direction = 'DOWN';
             else if (e.key.toLowerCase() === 'p') togglePause();
             else if (e.key.toLowerCase() === 'r') restart();
         });
@@ -73,14 +69,16 @@
         function startGame() {
             overlay.style.display = 'none';
             paused = false;
-            snake = [{x: 9 * box, y: 10 * box}];
+            pacman = {x: 9 * box, y: 9 * box};
             direction = null;
-            food = randomFood();
+            pellets = [];
+            for (let i = 0; i < 10; i++) {
+                pellets.push(randomPellet());
+            }
             score = 0;
-            speed = 100;
             updateScore();
             clearInterval(game);
-            game = setInterval(draw, speed);
+            game = setInterval(draw, 100);
         }
 
         function restart() {
@@ -98,11 +96,11 @@
                 clearInterval(game);
             } else {
                 overlay.style.display = 'none';
-                game = setInterval(draw, speed);
+                game = setInterval(draw, 100);
             }
         }
 
-        function randomFood() {
+        function randomPellet() {
             return {
                 x: Math.floor(Math.random() * 20) * box,
                 y: Math.floor(Math.random() * 20) * box
@@ -110,58 +108,52 @@
         }
 
         function updateScore() {
-            if (score > bestScore) {
-                bestScore = score;
-                localStorage.setItem('bestScore', bestScore);
+            document.getElementById('score').innerText = `Score : ${score}`;
+        }
+
+        function drawPacman(x, y) {
+            ctx.fillStyle = 'yellow';
+            ctx.beginPath();
+            let start = 0.25 * Math.PI;
+            let end = 1.75 * Math.PI;
+            if (direction === 'LEFT') {
+                start = 1.25 * Math.PI;
+                end = 0.75 * Math.PI;
+            } else if (direction === 'UP') {
+                start = 1.75 * Math.PI;
+                end = 1.25 * Math.PI;
+            } else if (direction === 'DOWN') {
+                start = 0.75 * Math.PI;
+                end = 0.25 * Math.PI;
             }
-            document.getElementById('score').innerText = `Score : ${score} | Meilleur : ${bestScore}`;
+            ctx.arc(x + box/2, y + box/2, box/2, start, end);
+            ctx.lineTo(x + box/2, y + box/2);
+            ctx.fill();
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let i = 0; i < snake.length; i++) {
-                ctx.fillStyle = i === 0 ? '#0f0' : '#fff';
-                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+            drawPacman(pacman.x, pacman.y);
+            ctx.fillStyle = '#fff';
+            for (let pellet of pellets) {
+                ctx.beginPath();
+                ctx.arc(pellet.x + box/2, pellet.y + box/2, box/8, 0, 2*Math.PI);
+                ctx.fill();
             }
-            ctx.fillStyle = '#f00';
-            ctx.fillRect(food.x, food.y, box, box);
-            let snakeX = snake[0].x;
-            let snakeY = snake[0].y;
-            if (direction === 'LEFT') snakeX -= box;
-            if (direction === 'UP') snakeY -= box;
-            if (direction === 'RIGHT') snakeX += box;
-            if (direction === 'DOWN') snakeY += box;
-            if (direction) {
-                if (snakeX === food.x && snakeY === food.y) {
-                    score++;
-                    food = randomFood();
-                    snake.unshift({x: snakeX, y: snakeY});
-                    if (speed > 40) {
-                        speed -= 2;
-                        clearInterval(game);
-                        game = setInterval(draw, speed);
-                    }
-                    updateScore();
-                } else {
-                    snake.pop();
-                    snake.unshift({x: snakeX, y: snakeY});
-                }
-                if (
-                    snakeX < 0 || snakeX >= 400 ||
-                    snakeY < 0 || snakeY >= 400 ||
-                    collision({x: snakeX, y: snakeY}, snake.slice(1))
-                ) {
-                    overlay.innerText = 'Game Over - appuyez sur Entrée';
-                    restart();
-                }
+            let pacmanX = pacman.x;
+            let pacmanY = pacman.y;
+            if (direction === 'LEFT') pacmanX -= box;
+            if (direction === 'UP') pacmanY -= box;
+            if (direction === 'RIGHT') pacmanX += box;
+            if (direction === 'DOWN') pacmanY += box;
+            pacman.x = (pacmanX + canvas.width) % canvas.width;
+            pacman.y = (pacmanY + canvas.height) % canvas.height;
+            pellets = pellets.filter(p => !(p.x === pacman.x && p.y === pacman.y));
+            if (pellets.length < 5) {
+                pellets.push(randomPellet());
+                score++;
+                updateScore();
             }
-        }
-
-        function collision(head, array) {
-            for (let part of array) {
-                if (head.x === part.x && head.y === part.y) return true;
-            }
-            return false;
         }
     </script>
 </body>
